@@ -169,9 +169,7 @@ export default function Falcim() {
                       { translateX: shineTranslateX },
                       { rotate: "25deg" },
                     ],
-                  },
-                ]}
-              />
+                  }, ]} />
               <Text style={styles.circleText}>
                 Neyse halim {"\n"} Çıksın falim
               </Text>
@@ -181,7 +179,7 @@ export default function Falcim() {
 
         {!isInitialState && (
           <View style={styles.resultWrapper}>
-            <Text style={styles.heading}>Falın Hazır 🔮</Text>
+            <Text style={styles.heading}>falcım baktı falına... </Text>
 
             <View style={styles.textBoxContainer}>
               <ScrollView
