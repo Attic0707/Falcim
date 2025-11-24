@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sametatik7.falcim",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +28,11 @@
     },
     "web": {
       "favicon": "./assets/appIcon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "18010286-4923-4964-b7d0-9fcf502d49eb"
+      }
     }
   }
 }

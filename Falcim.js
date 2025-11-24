@@ -5,6 +5,10 @@ import * as ImagePicker from "expo-image-picker";
 const BACKGROUNDS = [
   require("./assets/backgrounds/background1.jpg"),
   require("./assets/backgrounds/background2.jpg"),
+  require("./assets/backgrounds/background3.jpg"),
+  require("./assets/backgrounds/background4.jpg"),
+  require("./assets/backgrounds/background5.jpg"),
+  require("./assets/backgrounds/background6.jpg"),
 ];
 
 const RESPONSES_BY_CATEGORY = {
@@ -39,7 +43,6 @@ const RESPONSES_BY_CATEGORY = {
     "Zamanında yapmadığın bir konuşma, söyleyemediğin bir söz veya kaçırdığın bir fırsat zaman zaman aklına geliyor. Bu his seni bazen hüzünlendiriyor ama aynı zamanda bugünkü kararlarını daha bilinçli almanı sağlıyor. Geçmişteki o küçük pişmanlıklar aslında bugün sana rehberlik ediyor. Yakın zamanda geçmişten gelen biriyle ya da eski bir konuyla yüzleşme şansı bulabilirsin. Bu kez daha açık, daha net ve daha kendin olarak davranacaksın. Bu yüzleşme seni şaşırtıcı biçimde hafifletebilir."
   ],
 };
-
 
 const CATEGORY_KEYS = Object.keys(RESPONSES_BY_CATEGORY);
 
@@ -131,7 +134,7 @@ export default function Falcim() {
           <View style={styles.centerWrapper}>
             <TouchableOpacity style={styles.circleButton} onPress={pickImage}>
               <Text style={styles.circleText}>
-                Neyse halim {"\n"} Çıksın falim {"\n"} 🔮
+                Neyse halim {"\n"} Çıksın falim
               </Text>
             </TouchableOpacity>
           </View>
@@ -139,7 +142,7 @@ export default function Falcim() {
 
         {!isInitialState && (
           <View style={styles.resultWrapper}>
-            <Text style={styles.heading}>Falın Hazır 🔮</Text>
+            <Text style={styles.heading}>Falcım 🔮</Text>
 
             <View style={styles.textBoxContainer}>
               <ScrollView
@@ -187,11 +190,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   circleButton: {
-    width: 100,
+    width: 200,
     height: 100,
     borderRadius: 130,
-    backgroundColor: "#f4b31a80",
-    alignItems: "center",
+    backgroundColor: "#f4b31a",
+    alignItems: "bottom",
     justifyContent: "center",
     paddingHorizontal: 24,
     shadowColor: "#000",
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
   },
   textBoxContainer: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: "#111827a6",
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
