@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   textBoxContainer: {
     flex: 1,
-    backgroundColor: "#111827",
+    backgroundColor: "#1118276e",
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
@@ -377,7 +377,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 32, // to avoid overlap with info text
+    paddingTop: 32,
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingBottom: 32,
   },
   randomText: {
     color: "#e5e7eb",
