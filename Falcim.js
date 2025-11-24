@@ -121,41 +121,50 @@ export default function Falcim() {
   const pendingReuploadRef = useRef(false);
   const interstitialRef = useRef(null);
 
-  // Initialize ads (only if enabled)
   useEffect(() => {
-    if (!ADS_ENABLED || !mobileAds) return;
-    mobileAds().initialize();
-  }, []);
-
-  // Create interstitial and listen to events (only if enabled)
-  useEffect(() => {
-    if (!ADS_ENABLED || !InterstitialAd || !AdEventType || !INTERSTITIAL_AD_UNIT_ID) {
+    if ( !ADS_ENABLED || !mobileAds || !InterstitialAd || !AdEventType || !INTERSTITIAL_AD_UNIT_ID ) {
       return;
     }
 
-    const ad = InterstitialAd.createForAdRequest(INTERSTITIAL_AD_UNIT_ID, {
-      requestNonPersonalizedAdsOnly: true,
-    });
-    interstitialRef.current = ad;
+    let ad;
+    let unsubscribe;
 
-    const unsubscribe = ad.onAdEvent((type) => {
-      if (type === AdEventType.LOADED) {
-        setIsInterstitialLoaded(true);
-      } else if (type === AdEventType.CLOSED) {
-        setIsInterstitialLoaded(false);
+    (async () => {
+      try {
+        // 1) Initialize SDK
+        await mobileAds().initialize();
+
+        // 2) Create interstitial
+        ad = InterstitialAd.createForAdRequest(INTERSTITIAL_AD_UNIT_ID, {
+          requestNonPersonalizedAdsOnly: true,
+        });
+        interstitialRef.current = ad;
+
+        // 3) Subscribe to events
+        unsubscribe = ad.onAdEvent((type) => {
+          if (type === AdEventType.LOADED) {
+            setIsInterstitialLoaded(true);
+          } else if (type === AdEventType.CLOSED) {
+            setIsInterstitialLoaded(false);
+            ad.load();
+            if (pendingReuploadRef.current) {
+              pendingReuploadRef.current = false;
+              pickImage();
+            }
+          }
+        });
+
+        // 4) Load the ad
         ad.load();
-        if (pendingReuploadRef.current) {
-          pendingReuploadRef.current = false;
-          pickImage();
-        }
+      } catch (e) {
+        console.log("AdMob init / interstitial error:", e);
       }
-    });
+    })();
 
-    ad.load();
-
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [ADS_ENABLED]);
 
   // Random background once
   useEffect(() => {
