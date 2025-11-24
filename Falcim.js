@@ -8,6 +8,8 @@ import {
   ScrollView,
   Share,
   Animated,
+  ActivityIndicator,
+  Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
@@ -79,18 +81,18 @@ export default function Falcim() {
   const [imageUri, setImageUri] = useState(null);
   const [randomText, setRandomText] = useState("");
   const [backgroundSource, setBackgroundSource] = useState(BACKGROUNDS[0]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAboutVisible, setIsAboutVisible] = useState(false);
 
-  // Animation value for shine
   const shineAnim = useRef(new Animated.Value(0)).current;
+  const loadingTimeoutRef = useRef(null);
 
   useEffect(() => {
-    // pick random background
     const idx = Math.floor(Math.random() * BACKGROUNDS.length);
     setBackgroundSource(BACKGROUNDS[idx]);
   }, []);
 
   useEffect(() => {
-    // looped shine animation over the button
     Animated.loop(
       Animated.timing(shineAnim, {
         toValue: 1,
@@ -99,6 +101,14 @@ export default function Falcim() {
       })
     ).start();
   }, [shineAnim]);
+
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -117,7 +127,20 @@ export default function Falcim() {
     if (!result.canceled) {
       const pickedUri = result.assets?.[0]?.uri || null;
       setImageUri(pickedUri);
-      setRandomText(getRandomCombinedText());
+      setRandomText("");
+      setIsLoading(true);
+
+      // random delay up to 10 seconds (e.g. between 3 and 10 sec)
+      const delay = 3000 + Math.floor(Math.random() * 7000);
+
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+
+      loadingTimeoutRef.current = setTimeout(() => {
+        setRandomText(getRandomCombinedText());
+        setIsLoading(false);
+      }, delay);
     }
   };
 
@@ -137,12 +160,20 @@ export default function Falcim() {
     pickImage();
   };
 
-  const isInitialState = !imageUri && !randomText;
+  const handleClose = () => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+    setImageUri(null);
+    setRandomText("");
+    setIsLoading(false);
+  };
 
-  // map animation [0..1] to movement across the circle
+  const isInitialState = !imageUri && !randomText && !isLoading;
+
   const shineTranslateX = shineAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-260, 260], // move across entire button width
+    outputRange: [-260, 260],
   });
 
   return (
@@ -159,7 +190,6 @@ export default function Falcim() {
               onPress={pickImage}
               activeOpacity={0.9}
             >
-              {/* Glare / Shine overlay */}
               <Animated.View
                 pointerEvents="none"
                 style={[
@@ -169,7 +199,9 @@ export default function Falcim() {
                       { translateX: shineTranslateX },
                       { rotate: "25deg" },
                     ],
-                  }, ]} />
+                  },
+                ]}
+              />
               <Text style={styles.circleText}>
                 Neyse halim {"\n"} Çıksın falim
               </Text>
@@ -179,32 +211,95 @@ export default function Falcim() {
 
         {!isInitialState && (
           <View style={styles.resultWrapper}>
-            <Text style={styles.heading}>falcım baktı falına... </Text>
+            <Text style={styles.heading}>
+              {isLoading ? "Falın Bakılıyor 🔮" : "Falın Hazır 🔮"}
+            </Text>
 
             <View style={styles.textBoxContainer}>
-              <ScrollView
-                style={styles.scroll}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <Text style={styles.randomText}>{randomText}</Text>
-              </ScrollView>
-            </View>
-
-            <View style={styles.buttonsRow}>
-              <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                <Text style={styles.buttonText}>Paylaş</Text>
+              {/* Close X */}
+              <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
 
+              {isLoading ? (
+                <View style={styles.loadingWrapper}>
+                  <ActivityIndicator size="large" color="#f4b41a" />
+                  <Text style={styles.loadingText}>
+                    Kahve falın yorumlanıyor...
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <ScrollView
+                    style={styles.scroll}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <Text style={styles.randomText}>{randomText}</Text>
+                  </ScrollView>
+
+                  {/* Info bottom-left */}
+                  <View style={styles.infoWrapper}>
+                    <TouchableOpacity onPress={() => setIsAboutVisible(true)}>
+                      <Text style={styles.infoText}>Hakkında</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {!isLoading && (
+              <View style={styles.buttonsRow}>
+                <TouchableOpacity
+                  style={styles.shareButton}
+                  onPress={handleShare}
+                >
+                  <Text style={styles.buttonText}>Paylaş</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.reuploadButton}
+                  onPress={handleReupload}
+                >
+                  <Text style={styles.buttonText}>Tekrar Seç</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* About Modal */}
+        <Modal
+          visible={isAboutVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsAboutVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Hakkında</Text>
+              <ScrollView style={styles.modalScroll}>
+                <Text style={styles.modalText}>
+                  Burası falcım uygulamasının tanıtım alanı. Buraya uygulamanın
+                  nasıl çalıştığını, eğlence amaçlı olduğunu ve kendinle ilgili
+                  kısa bir tanıtımı yazabilirsin. Örneğin mesleğin, ilgi
+                  alanların, bu uygulamayı neden yaptığın gibi bilgiler güzel
+                  durur.{"\n\n"}
+                  Bu metni dilediğin gibi değiştirebilirsin. Kullanıcıya sıcak,
+                  samimi ve güven veren bir dille kendini anlatman, uygulamanın
+                  enerjisini de yükseltecektir.
+                </Text>
+              </ScrollView>
+
               <TouchableOpacity
-                style={styles.reuploadButton}
-                onPress={handleReupload}
+                style={styles.modalCloseButton}
+                onPress={() => setIsAboutVisible(false)}
               >
-                <Text style={styles.buttonText}>Tekrar Seç</Text>
+                <Text style={styles.modalCloseButtonText}>Kapat</Text>
               </TouchableOpacity>
             </View>
           </View>
-        )}
+        </Modal>
       </View>
     </ImageBackground>
   );
@@ -219,7 +314,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: "rgba(5, 8, 22, 0.7)",
   },
-
   centerWrapper: {
     position: "absolute",
     bottom: 80,
@@ -277,12 +371,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: "#374151",
+    position: "relative",
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 12,
+    paddingBottom: 32, // to avoid overlap with info text
   },
   randomText: {
     color: "#e5e7eb",
@@ -314,6 +409,84 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#f9fafb",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  loadingWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: {
+    color: "#e5e7eb",
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    padding: 4,
+  },
+  closeButtonText: {
+    color: "#9ca3af",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  infoWrapper: {
+    position: "absolute",
+    bottom: 10,
+    left: 16,
+  },
+  infoText: {
+    color: "#9ca3af",
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    width: "100%",
+    maxHeight: "80%",
+    backgroundColor: "#111827",
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#f9fafb",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalScroll: {
+    maxHeight: 260,
+    marginBottom: 16,
+  },
+  modalText: {
+    color: "#e5e7eb",
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  modalCloseButton: {
+    alignSelf: "center",
+    backgroundColor: "#6366f1",
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  modalCloseButtonText: {
+    color: "#f9fafb",
+    fontSize: 14,
     fontWeight: "600",
   },
 });
