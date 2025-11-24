@@ -2,7 +2,7 @@
   "expo": {
     "name": "falcim",
     "slug": "falcim",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "fal bakımı, kahve falı, falını öğren, arkadaşlarınla paylaş, günün falı",
     "orientation": "portrait",
     "icon": "./assets/appIcon.png",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "1",
+      "buildNumber": "2",
       "bundleIdentifier": "com.sametatik7.falcim",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.tavanarasi.falcim",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/appIcon.png",
         "backgroundColor": "#ffffff"
