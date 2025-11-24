@@ -33,6 +33,14 @@
     "web": {
       "favicon": "./assets/appIcon.png"
     },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-8919233762784771~6305387615"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "18010286-4923-4964-b7d0-9fcf502d49eb"
