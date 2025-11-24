@@ -10,14 +10,56 @@ import {
   Animated,
   ActivityIndicator,
   Modal,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import Constants from "expo-constants";
 
 const BACKGROUNDS = [
   require("./assets/backgrounds/background1.jpg"),
   require("./assets/backgrounds/background2.jpg"),
 ];
 
+// ---- AD CONFIG: disable in Expo Go, enable in dev/preview/prod builds ----
+const IS_EXPO_GO = Constants.appOwnership === "expo";
+const ADS_ENABLED = !IS_EXPO_GO;
+
+let mobileAds = null;
+let BannerAd = null;
+let BannerAdSize = null;
+let InterstitialAd = null;
+let AdEventType = null;
+let TestIds = null;
+let INTERSTITIAL_AD_UNIT_ID = "";
+let BANNER_AD_UNIT_ID = "";
+
+if (ADS_ENABLED) {
+  // Only load the native ad module if we are NOT in Expo Go
+  const googleMobileAds = require("react-native-google-mobile-ads");
+  mobileAds = googleMobileAds.default;
+  BannerAd = googleMobileAds.BannerAd;
+  BannerAdSize = googleMobileAds.BannerAdSize;
+  InterstitialAd = googleMobileAds.InterstitialAd;
+  AdEventType = googleMobileAds.AdEventType;
+  TestIds = googleMobileAds.TestIds;
+
+  // Use test IDs in dev builds, real IDs in production
+  INTERSTITIAL_AD_UNIT_ID = __DEV__
+    ? TestIds.INTERSTITIAL
+    : Platform.select({
+        ios: "ca-app-pub-xxxxxxxxxxxxxxxx/ios_interstitial_here", // TODO: add when you create iOS unit
+        android: "ca-app-pub-8919233762784771/6576958156",
+      });
+
+  BANNER_AD_UNIT_ID = __DEV__
+    ? TestIds.BANNER
+    : Platform.select({
+        ios: "ca-app-pub-xxxxxxxxxxxxxxxx/ios_banner_here", // TODO: add when you create iOS unit
+        android: "ca-app-pub-8919233762784771/1352551635",
+      });
+}
+
+// ---- FORTUNE TEXTS ----
 const RESPONSES_BY_CATEGORY = {
   love: [
     "Kalbinde uzun zamandır taşıdığın bir şey var, kimseye söylemesen de seni zaman zaman düşüncelere sürükleyen bir his. Aşka kapıları tamamen kapatmamışsın ama kolay kolay kimseye güvenmek istemediğin için kalbin biraz yavaş açılıyor. Yakında biriyle öyle bir sohbetin olacak ki, konuşmanın doğal akışı bile sana iyi gelecek. Bu kişiyle ilgili hislerin ilk başta belirsiz olsa da, tanıdık bir sıcaklık hissedeceksin. Kendini zorlamadan, akışta kalarak ilerlersen kalbinin uzun zamandır özlediği o hafifliği yeniden yaşayabilirsin.",
@@ -68,11 +110,8 @@ const getRandomCombinedText = () => {
     secondIndex = Math.floor(Math.random() * CATEGORY_KEYS.length);
   }
 
-  const cat1 = CATEGORY_KEYS[firstIndex];
-  const cat2 = CATEGORY_KEYS[secondIndex];
-
-  const text1 = getRandomFromArray(RESPONSES_BY_CATEGORY[cat1]);
-  const text2 = getRandomFromArray(RESPONSES_BY_CATEGORY[cat2]);
+  const text1 = getRandomFromArray(RESPONSES_BY_CATEGORY[CATEGORY_KEYS[firstIndex]]);
+  const text2 = getRandomFromArray(RESPONSES_BY_CATEGORY[CATEGORY_KEYS[secondIndex]]);
 
   return text1 + "\n\n" + text2;
 };
@@ -87,11 +126,54 @@ export default function Falcim() {
   const shineAnim = useRef(new Animated.Value(0)).current;
   const loadingTimeoutRef = useRef(null);
 
+  // Interstitial state
+  const [isInterstitialLoaded, setIsInterstitialLoaded] = useState(false);
+  const pendingReuploadRef = useRef(false);
+  const interstitialRef = useRef(null);
+
+  // Initialize ads (only if enabled)
+  useEffect(() => {
+    if (!ADS_ENABLED || !mobileAds) return;
+    mobileAds().initialize();
+  }, []);
+
+  // Create interstitial and listen to events (only if enabled)
+  useEffect(() => {
+    if (!ADS_ENABLED || !InterstitialAd || !AdEventType || !INTERSTITIAL_AD_UNIT_ID) {
+      return;
+    }
+
+    const ad = InterstitialAd.createForAdRequest(INTERSTITIAL_AD_UNIT_ID, {
+      requestNonPersonalizedAdsOnly: true,
+    });
+    interstitialRef.current = ad;
+
+    const unsubscribe = ad.onAdEvent((type) => {
+      if (type === AdEventType.LOADED) {
+        setIsInterstitialLoaded(true);
+      } else if (type === AdEventType.CLOSED) {
+        setIsInterstitialLoaded(false);
+        ad.load();
+        if (pendingReuploadRef.current) {
+          pendingReuploadRef.current = false;
+          pickImage();
+        }
+      }
+    });
+
+    ad.load();
+
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Random background once
   useEffect(() => {
     const idx = Math.floor(Math.random() * BACKGROUNDS.length);
     setBackgroundSource(BACKGROUNDS[idx]);
   }, []);
 
+  // Shine animation loop
   useEffect(() => {
     Animated.loop(
       Animated.timing(shineAnim, {
@@ -102,15 +184,14 @@ export default function Falcim() {
     ).start();
   }, [shineAnim]);
 
+  // Cleanup spinner timeout
   useEffect(() => {
     return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     };
   }, []);
 
-  const pickImage = async () => {
+  async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       alert("Devam etmek için galeri erişim izni vermen gerekiyor.");
@@ -118,7 +199,7 @@ export default function Falcim() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaType.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -130,40 +211,44 @@ export default function Falcim() {
       setRandomText("");
       setIsLoading(true);
 
-      // random delay up to 10 seconds (e.g. between 3 and 10 sec)
-      const delay = 3000 + Math.floor(Math.random() * 7000);
+      const delay = 3000 + Math.floor(Math.random() * 7000); // 3–10 sec
 
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
       loadingTimeoutRef.current = setTimeout(() => {
         setRandomText(getRandomCombinedText());
         setIsLoading(false);
       }, delay);
     }
-  };
+  }
 
   const handleShare = async () => {
     if (!randomText) return;
-
     try {
-      await Share.share({
-        message: randomText,
-      });
+      await Share.share({ message: randomText });
     } catch (error) {
       console.log("Share error:", error);
     }
   };
 
   const handleReupload = () => {
-    pickImage();
+    // In Expo Go: no ads, just pick image
+    if (!ADS_ENABLED) {
+      pickImage();
+      return;
+    }
+
+    // In dev/prod builds: try to show interstitial (real ones only in !__DEV__)
+    if (interstitialRef.current && isInterstitialLoaded && !__DEV__) {
+      pendingReuploadRef.current = true;
+      interstitialRef.current.show();
+    } else {
+      pickImage();
+    }
   };
 
   const handleClose = () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     setImageUri(null);
     setRandomText("");
     setIsLoading(false);
@@ -238,7 +323,7 @@ export default function Falcim() {
                     <Text style={styles.randomText}>{randomText}</Text>
                   </ScrollView>
 
-                  {/* Info bottom-left */}
+                  {/* About bottom-left */}
                   <View style={styles.infoWrapper}>
                     <TouchableOpacity onPress={() => setIsAboutVisible(true)}>
                       <Text style={styles.infoText}>Hakkında</Text>
@@ -249,21 +334,36 @@ export default function Falcim() {
             </View>
 
             {!isLoading && (
-              <View style={styles.buttonsRow}>
-                <TouchableOpacity
-                  style={styles.shareButton}
-                  onPress={handleShare}
-                >
-                  <Text style={styles.buttonText}>Paylaş</Text>
-                </TouchableOpacity>
+              <>
+                <View style={styles.buttonsRow}>
+                  <TouchableOpacity
+                    style={styles.shareButton}
+                    onPress={handleShare}
+                  >
+                    <Text style={styles.buttonText}>Paylaş</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.reuploadButton}
-                  onPress={handleReupload}
-                >
-                  <Text style={styles.buttonText}>Tekrar Seç</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    style={styles.reuploadButton}
+                    onPress={handleReupload}
+                  >
+                    <Text style={styles.buttonText}>Tekrar Seç</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Banner Ad – only if ads enabled and module exists */}
+                {ADS_ENABLED && BannerAd && BannerAdSize && (
+                  <View style={styles.bannerWrapper}>
+                    <BannerAd
+                      unitId={BANNER_AD_UNIT_ID}
+                      size={BannerAdSize.BANNER}
+                      requestOptions={{
+                        requestNonPersonalizedAdsOnly: true,
+                      }}
+                    />
+                  </View>
+                )}
+              </>
             )}
           </View>
         )}
@@ -280,14 +380,10 @@ export default function Falcim() {
               <Text style={styles.modalTitle}>Hakkında</Text>
               <ScrollView style={styles.modalScroll}>
                 <Text style={styles.modalText}>
-                  Burası falcım uygulamasının tanıtım alanı. Buraya uygulamanın
-                  nasıl çalıştığını, eğlence amaçlı olduğunu ve kendinle ilgili
-                  kısa bir tanıtımı yazabilirsin. Örneğin mesleğin, ilgi
-                  alanların, bu uygulamayı neden yaptığın gibi bilgiler güzel
-                  durur.{"\n\n"}
-                  Bu metni dilediğin gibi değiştirebilirsin. Kullanıcıya sıcak,
-                  samimi ve güven veren bir dille kendini anlatman, uygulamanın
-                  enerjisini de yükseltecektir.
+                  Buraya uygulamanın hikayesini, kendini ve bu fal
+                  deneyimini neden oluşturduğunu yazabilirsin.{"\n\n"}
+                  Kullanıcıya sıcak ve samimi gelen birkaç paragraf, uygulamanın
+                  enerjisini de yükseltecek.
                 </Text>
               </ScrollView>
 
@@ -306,9 +402,7 @@ export default function Falcim() {
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
+  background: { flex: 1 },
   container: {
     flex: 1,
     paddingHorizontal: 20,
@@ -373,9 +467,7 @@ const styles = StyleSheet.create({
     borderColor: "#374151",
     position: "relative",
   },
-  scroll: {
-    flex: 1,
-  },
+  scroll: { flex: 1 },
   scrollContent: {
     paddingTop: 32,
     paddingLeft: 16,
@@ -447,6 +539,11 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     fontSize: 13,
     textDecorationLine: "underline",
+  },
+  bannerWrapper: {
+    marginTop: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalOverlay: {
     flex: 1,
