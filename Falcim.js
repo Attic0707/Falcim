@@ -18,9 +18,12 @@ import Constants from "expo-constants";
 const BACKGROUNDS = [
   require("./assets/backgrounds/background1.jpg"),
   require("./assets/backgrounds/background2.jpg"),
+  require("./assets/backgrounds/background3.jpg"),
+  require("./assets/backgrounds/background4.jpg"),
+  require("./assets/backgrounds/background5.jpg"),
+  require("./assets/backgrounds/background6.jpg"),
 ];
 
-// ---- AD CONFIG: disable in Expo Go, enable in dev/preview/prod builds ----
 const IS_EXPO_GO = Constants.appOwnership === "expo";
 const ADS_ENABLED = !IS_EXPO_GO;
 
@@ -33,8 +36,8 @@ let TestIds = null;
 let INTERSTITIAL_AD_UNIT_ID = "";
 let BANNER_AD_UNIT_ID = "";
 
+// Only load the native ad module if we are NOT in Expo Go
 if (ADS_ENABLED) {
-  // Only load the native ad module if we are NOT in Expo Go
   const googleMobileAds = require("react-native-google-mobile-ads");
   mobileAds = googleMobileAds.default;
   BannerAd = googleMobileAds.BannerAd;
@@ -43,23 +46,10 @@ if (ADS_ENABLED) {
   AdEventType = googleMobileAds.AdEventType;
   TestIds = googleMobileAds.TestIds;
 
-  // Use test IDs in dev builds, real IDs in production
-  INTERSTITIAL_AD_UNIT_ID = __DEV__
-    ? TestIds.INTERSTITIAL
-    : Platform.select({
-        ios: "ca-app-pub-xxxxxxxxxxxxxxxx/ios_interstitial_here", // TODO: add when you create iOS unit
-        android: "ca-app-pub-8919233762784771/6576958156",
-      });
-
-  BANNER_AD_UNIT_ID = __DEV__
-    ? TestIds.BANNER
-    : Platform.select({
-        ios: "ca-app-pub-xxxxxxxxxxxxxxxx/ios_banner_here", // TODO: add when you create iOS unit
-        android: "ca-app-pub-8919233762784771/1352551635",
-      });
+  INTERSTITIAL_AD_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : Platform.select({ ios: "ca-app-pub-8919233762784771/6576958156", });
+  BANNER_AD_UNIT_ID = __DEV__ ? TestIds.BANNER : Platform.select({ ios: "ca-app-pub-8919233762784771/1352551635", });
 }
 
-// ---- FORTUNE TEXTS ----
 const RESPONSES_BY_CATEGORY = {
   love: [
     "Kalbinde uzun zamandır taşıdığın bir şey var, kimseye söylemesen de seni zaman zaman düşüncelere sürükleyen bir his. Aşka kapıları tamamen kapatmamışsın ama kolay kolay kimseye güvenmek istemediğin için kalbin biraz yavaş açılıyor. Yakında biriyle öyle bir sohbetin olacak ki, konuşmanın doğal akışı bile sana iyi gelecek. Bu kişiyle ilgili hislerin ilk başta belirsiz olsa da, tanıdık bir sıcaklık hissedeceksin. Kendini zorlamadan, akışta kalarak ilerlersen kalbinin uzun zamandır özlediği o hafifliği yeniden yaşayabilirsin.",
@@ -211,7 +201,7 @@ export default function Falcim() {
       setRandomText("");
       setIsLoading(true);
 
-      const delay = 3000 + Math.floor(Math.random() * 7000); // 3–10 sec
+      const delay = 3000 + Math.floor(Math.random() * 7000);
 
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
@@ -238,7 +228,6 @@ export default function Falcim() {
       return;
     }
 
-    // In dev/prod builds: try to show interstitial (real ones only in !__DEV__)
     if (interstitialRef.current && isInterstitialLoaded && !__DEV__) {
       pendingReuploadRef.current = true;
       interstitialRef.current.show();
